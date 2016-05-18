@@ -1873,7 +1873,7 @@ func (m *Model) CheckFolderHealth(id string) error {
 		// it. Attempt to create and tag with our marker as appropriate.
 
 		if os.IsNotExist(err) {
-			err = osutil.MkdirAll(folder.Path(), 0700)
+			err = osutil.MkdirAll(folder.Path(), 0755)
 		}
 
 		if err == nil && !folder.HasMarker() {
