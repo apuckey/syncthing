@@ -379,7 +379,7 @@ func generate(generateDir string) {
 	if err != nil {
 		l.Fatalln("generate:", err)
 	}
-	ensureDir(dir, 0700)
+	ensureDir(dir, 0755)
 
 	certFile, keyFile := filepath.Join(dir, "cert.pem"), filepath.Join(dir, "key.pem")
 	cert, err := tls.LoadX509KeyPair(certFile, keyFile)
