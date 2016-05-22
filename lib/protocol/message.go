@@ -32,6 +32,8 @@ type IndexMessage struct {
 type FileInfo struct {
 	Name         string // max:8192
 	Flags        uint32
+	Uid          uint32
+	Gid          uint32
 	Modified     int64
 	Version      Vector
 	LocalVersion int64
@@ -40,8 +42,8 @@ type FileInfo struct {
 }
 
 func (f FileInfo) String() string {
-	return fmt.Sprintf("File{Name:%q, Flags:0%o, Modified:%d, Version:%v, Size:%d, Blocks:%v}",
-		f.Name, f.Flags, f.Modified, f.Version, f.Size(), f.Blocks)
+	return fmt.Sprintf("File{Name:%q, Flags:0%o, Uid:%d, Gid:%d, Modified:%d, Version:%v, Size:%d, Blocks:%v}",
+		f.Name, f.Flags, f.Uid, f.Gid, f.Modified, f.Version, f.Size(), f.Blocks)
 }
 
 func (f FileInfo) Size() (bytes int64) {

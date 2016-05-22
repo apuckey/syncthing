@@ -151,7 +151,9 @@ func withPreparedTarget(from, to string, f func() error) error {
 	toDir := filepath.Dir(to)
 	if info, err := os.Stat(toDir); err == nil && info.IsDir() && info.Mode()&0200 == 0 {
 		os.Chmod(toDir, 0755)
-		defer os.Chmod(toDir, info.Mode())
+		defer func() {
+			os.Chmod(toDir, info.Mode())
+		}()
 	}
 
 	// On Windows, make sure the destination file is writeable (or we can't delete it)

@@ -22,6 +22,8 @@ func (o *FileInfoTruncated) UnmarshalXDR(bs []byte) error {
 func (o *FileInfoTruncated) UnmarshalXDRFrom(u *xdr.Unmarshaller) error {
 	o.Name = u.UnmarshalStringMax(8192)
 	o.Flags = u.UnmarshalUint32()
+	o.Uid = u.UnmarshalUint32()
+	o.Gid = u.UnmarshalUint32()
 	o.Modified = int64(u.UnmarshalUint64())
 	(&o.Version).UnmarshalXDRFrom(u)
 	o.LocalVersion = int64(u.UnmarshalUint64())

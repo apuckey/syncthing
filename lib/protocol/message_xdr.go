@@ -249,6 +249,8 @@ FileInfo Structure:
 struct FileInfo {
 	string Name<8192>;
 	unsigned int Flags;
+	unsigned int Uid;
+	unsigned int Gid;
 	hyper Modified;
 	Vector Version;
 	hyper LocalVersion;
@@ -258,7 +260,8 @@ struct FileInfo {
 */
 
 func (o FileInfo) XDRSize() int {
-	return 4 + len(o.Name) + xdr.Padding(len(o.Name)) + 4 + 8 +
+	return 4 + len(o.Name) + xdr.Padding(len(o.Name)) + 4 +
+		4 + 4 + 8 +
 		o.Version.XDRSize() + 8 +
 		4 + xdr.SizeOfSlice(o.Blocks)
 }
@@ -283,6 +286,8 @@ func (o FileInfo) MarshalXDRInto(m *xdr.Marshaller) error {
 	}
 	m.MarshalString(o.Name)
 	m.MarshalUint32(o.Flags)
+	m.MarshalUint32(o.Uid)
+	m.MarshalUint32(o.Gid)
 	m.MarshalUint64(uint64(o.Modified))
 	if err := o.Version.MarshalXDRInto(m); err != nil {
 		return err
@@ -307,6 +312,8 @@ func (o *FileInfo) UnmarshalXDR(bs []byte) error {
 func (o *FileInfo) UnmarshalXDRFrom(u *xdr.Unmarshaller) error {
 	o.Name = u.UnmarshalStringMax(8192)
 	o.Flags = u.UnmarshalUint32()
+	o.Uid = u.UnmarshalUint32()
+	o.Gid = u.UnmarshalUint32()
 	o.Modified = int64(u.UnmarshalUint64())
 	(&o.Version).UnmarshalXDRFrom(u)
 	o.LocalVersion = int64(u.UnmarshalUint64())

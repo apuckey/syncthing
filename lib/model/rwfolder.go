@@ -578,6 +578,7 @@ func (f *rwFolder) handleDir(file protocol.FileInfo) {
 
 	realName := filepath.Join(f.dir, file.Name)
 	mode := os.FileMode(file.Flags & 0777)
+
 	if f.ignorePermissions(file) {
 		mode = 0777
 	}
@@ -620,6 +621,7 @@ func (f *rwFolder) handleDir(file protocol.FileInfo) {
 
 			// Mask for the bits we want to preserve and add them in to the
 			// directories permissions.
+			os.Chown(path, int(file.Uid), int(file.Gid))
 			return os.Chmod(path, mode|(info.Mode()&retainBits))
 		}
 
@@ -644,6 +646,7 @@ func (f *rwFolder) handleDir(file protocol.FileInfo) {
 	if f.ignorePermissions(file) {
 		f.dbUpdates <- dbUpdateJob{file, dbUpdateHandleDir}
 	} else if err := os.Chmod(realName, mode|(info.Mode()&retainBits)); err == nil {
+		os.Chown(realName, int(file.Uid), int(file.Gid));
 		f.dbUpdates <- dbUpdateJob{file, dbUpdateHandleDir}
 	} else {
 		l.Infof("Puller (folder %q, dir %q): %v", f.folderID, file.Name, err)
@@ -1032,6 +1035,11 @@ func (f *rwFolder) shortcutFile(file protocol.FileInfo) error {
 			f.newError(file.Name, err)
 			return err
 		}
+		if err := os.Chown(realName, int(file.Uid), int(file.Gid)); err != nil {
+			l.Infof("Puller (folder %q, file %q): shortcut: chown: %v", f.folderID, file.Name, err)
+			f.newError(file.Name, err)
+			return err
+		}
 	}
 
 	t := time.Unix(file.Modified, 0)
@@ -1242,6 +1250,9 @@ func (f *rwFolder) performFinish(state *sharedPullerState) error {
 	// Set the correct permission bits on the new file
 	if !f.ignorePermissions(state.file) {
 		if err := os.Chmod(state.tempName, os.FileMode(state.file.Flags&0777)); err != nil {
+			return err
+		}
+		if err := os.Chown(state.tempName, int(state.file.Uid), int(state.file.Gid)); err != nil {
 			return err
 		}
 	}

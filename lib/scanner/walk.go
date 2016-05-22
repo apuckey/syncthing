@@ -23,6 +23,8 @@ import (
 	"github.com/syncthing/syncthing/lib/protocol"
 	"github.com/syncthing/syncthing/lib/symlinks"
 	"golang.org/x/text/unicode/norm"
+
+	"syscall"
 )
 
 var maskModePerm os.FileMode
@@ -308,10 +310,12 @@ func (w *walker) walkRegular(relPath string, info os.FileInfo, mtime time.Time, 
 	//  - was not a symlink (since it's a file now)
 	//  - was not invalid (since it looks valid now)
 	//  - has the same size as previously
+	var st = info.Sys().(*syscall.Stat_t)
 	cf, ok := w.CurrentFiler.CurrentFile(relPath)
 	permUnchanged := w.IgnorePerms || !cf.HasPermissionBits() || PermsEqual(cf.Flags, curMode)
 	if ok && permUnchanged && !cf.IsDeleted() && cf.Modified == mtime.Unix() && !cf.IsDirectory() &&
-		!cf.IsSymlink() && !cf.IsInvalid() && cf.Size() == info.Size() {
+		!cf.IsSymlink() && !cf.IsInvalid() && cf.Size() == info.Size() &&
+		cf.Uid == st.Uid && cf.Gid == st.Gid {
 		return nil
 	}
 
@@ -326,6 +330,8 @@ func (w *walker) walkRegular(relPath string, info os.FileInfo, mtime time.Time, 
 		Name:       relPath,
 		Version:    cf.Version.Update(w.ShortID),
 		Flags:      flags,
+		Uid:        st.Uid,
+		Gid:        st.Gid,
 		Modified:   mtime.Unix(),
 		CachedSize: info.Size(),
 	}
@@ -348,9 +354,11 @@ func (w *walker) walkDir(relPath string, info os.FileInfo, mtime time.Time, dcha
 	//  - was a directory previously (not a file or something else)
 	//  - was not a symlink (since it's a directory now)
 	//  - was not invalid (since it looks valid now)
+	var st = info.Sys().(*syscall.Stat_t)
 	cf, ok := w.CurrentFiler.CurrentFile(relPath)
 	permUnchanged := w.IgnorePerms || !cf.HasPermissionBits() || PermsEqual(cf.Flags, uint32(info.Mode()))
-	if ok && permUnchanged && !cf.IsDeleted() && cf.IsDirectory() && !cf.IsSymlink() && !cf.IsInvalid() {
+	if ok && permUnchanged && !cf.IsDeleted() && cf.IsDirectory() && !cf.IsSymlink() && !cf.IsInvalid() &&
+		cf.Uid == st.Uid && cf.Gid == st.Gid {
 		return nil
 	}
 
@@ -360,10 +368,13 @@ func (w *walker) walkDir(relPath string, info os.FileInfo, mtime time.Time, dcha
 	} else {
 		flags |= uint32(info.Mode() & maskModePerm)
 	}
+
 	f := protocol.FileInfo{
 		Name:     relPath,
 		Version:  cf.Version.Update(w.ShortID),
 		Flags:    flags,
+		Uid:      st.Uid,
+		Gid:      st.Gid,
 		Modified: mtime.Unix(),
 	}
 	l.Debugln("dir:", relPath, f)
@@ -414,8 +425,11 @@ func (w *walker) walkSymlink(absPath, relPath string, dchan chan protocol.FileIn
 	//  - it wasn't invalid
 	//  - the symlink type (file/dir) was the same
 	//  - the block list (i.e. hash of target) was the same
+	s, _ := os.Stat(absPath)
+	var st = s.Sys().(*syscall.Stat_t)
 	cf, ok := w.CurrentFiler.CurrentFile(relPath)
-	if ok && !cf.IsDeleted() && cf.IsSymlink() && !cf.IsInvalid() && SymlinkTypeEqual(targetType, cf) && BlocksEqual(cf.Blocks, blocks) {
+	if ok && !cf.IsDeleted() && cf.IsSymlink() && !cf.IsInvalid() && SymlinkTypeEqual(targetType, cf) && BlocksEqual(cf.Blocks, blocks) &&
+		cf.Uid == st.Uid && cf.Gid == st.Gid {
 		return true, nil
 	}
 
@@ -424,6 +438,8 @@ func (w *walker) walkSymlink(absPath, relPath string, dchan chan protocol.FileIn
 		Version:  cf.Version.Update(w.ShortID),
 		Flags:    uint32(protocol.FlagSymlink | protocol.FlagNoPermBits | 0666 | SymlinkFlags(targetType)),
 		Modified: 0,
+		Uid:      st.Uid,
+		Gid:      st.Gid,
 		Blocks:   blocks,
 	}
 
